@@ -45,13 +45,37 @@ enum List[A]:
     case h :: t => t.foldLeft(h)(op)
 
   // Exercise: implement the following methods
-  def zipWithValue[B](value: B): List[(A, B)] = ???
-  def length(): Int = ???
-  def zipWithIndex: List[(A, Int)] = ???
-  def partition(predicate: A => Boolean): (List[A], List[A]) = ???
-  def span(predicate: A => Boolean): (List[A], List[A]) = ???
-  def takeRight(n: Int): List[A] = ???
-  def collect(predicate: PartialFunction[A, A]): List[A] = ???
+  def zipWithValue[B](value: B): List[(A, B)] = this match
+    case h :: t => (h, value) :: t.zipWithValue(value)
+    case _ => Nil()
+
+  def length(): Int = this.foldLeft(0)((acc, _) => acc + 1)
+
+  def zipWithIndex: List[(A, Int)] =
+    val (first: List[(A, Int)], second) = this.foldRight((Nil(): List[(A, Int)], 0))( (a, b) => {
+      val (list, index) = b
+      ((a, index) :: list, index + 1)
+    })
+    first
+
+  def partition(predicate: A => Boolean): (List[A], List[A]) =
+    val first = this.filter(predicate)
+    val second = this.filter(a => !predicate(a))
+    (first, second)
+
+  def span(first: List[A], predicate: A => Boolean): (List[A], List[A]) =
+    this match
+    case h :: t if predicate(h) => h :: first; t.span(first, predicate)
+    case h :: t if !predicate(h) => (first, t)
+
+  def takeRight(n: Int): List[A] =
+    this.zipWithIndex.filter((_, num) => num < n).map((elem, _) => elem)
+
+  def collect(predicate: PartialFunction[A, A]): List[A] =
+    this.foldRight(Nil()) { (a, acc) =>
+      if predicate.isDefinedAt(a) then predicate(a) :: acc
+      else acc
+    }
 // Factories
 object List:
 
@@ -70,8 +94,8 @@ object Test extends App:
   println(reference.zipWithValue(10)) // List((1, 10), (2, 10), (3, 10), (4, 10))
   println(reference.zipWithIndex) // List((1, 0), (2, 1), (3, 2), (4, 3))
   println(reference.partition(_ % 2 == 0)) // (List(2, 4), List(1, 3))
-  println(reference.span(_ % 2 != 0)) // (List(1), List(2, 3, 4))
-  println(reference.span(_ < 3)) // (List(1, 2), List(3, 4))
+  println(reference.span(Nil(), _ % 2 != 0)) // (List(1), List(2, 3, 4))
+  println(reference.span(Nil(), _ < 3)) // (List(1, 2), List(3, 4))
   println(reference.reduce(_ + _)) // 10
   println(List(10).reduce(_ + _)) // 10
   println(reference.takeRight(3)) // List(2, 3, 4)
